@@ -26,9 +26,10 @@ from sqlmodel import Session, select, update
 from apps.backport.datasync.data_metadata import (
     add_entity_code_and_name,
     variable_data,
+    variable_data_df,
     variable_metadata,
 )
-from apps.backport.datasync.datasync import upload_gzip_dict
+from apps.backport.datasync.datasync import upload_gzip_df, upload_gzip_dict
 from etl import config
 from etl.db import open_db
 
@@ -295,13 +296,13 @@ def upsert_table(
         # have to if we used ORM instead
         session.commit()
 
-        # process data and metadata
-        var_data = variable_data(df)
+        # get data and metadata
+        var_data_df = variable_data_df(df)
         var_metadata = variable_metadata(session, db_variable_id, df)
 
         # upload them to R2
         with ThreadPoolExecutor() as executor:
-            executor.submit(upload_gzip_dict, var_data, db_variable.s3_data_path(), r2=True)
+            executor.submit(upload_gzip_df, var_data_df, db_variable.s3_data_path(), r2=True)
             executor.submit(upload_gzip_dict, var_metadata, db_variable.s3_metadata_path(), r2=True)
 
         if verbose:
