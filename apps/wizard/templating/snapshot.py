@@ -55,6 +55,9 @@ dummy_values = {
     "origin.url_main": "https://dummy.dummy",
     "origin.date_accessed": utils.DATE_TODAY,
 }
+# SELECT + CUSTOM
+URIS_SELECT_CUSTOM = ["origin.license.name", "origin.attribution", "namespace"]
+
 # Other state vars
 if "show_form" not in st.session_state:
     st.session_state["show_form"] = True
@@ -275,7 +278,7 @@ def create_description(field: Dict[str, Any]) -> str:
     return description
 
 
-def render_fields_init() -> None:
+def render_fields_init() -> List[Any]:
     """Render fields to create directories and all."""
     # Text inputs
     fields = [
@@ -301,6 +304,7 @@ def render_fields_init() -> None:
             "placeholder": "'csv', 'xls', 'zip'",
         },
     ]
+    custom_fields = []
     for field in fields:
         key = field["title"].replace(" ", "_").lower()
         args = {
@@ -314,7 +318,12 @@ def render_fields_init() -> None:
         if APP_STATE.args.dummy_data:
             args["value"] = dummy_values[key]
 
-        APP_STATE.st_widget(**args)
+        if key in URIS_SELECT_CUSTOM:
+            args["st_widget"] = st.selectbox
+            # field_ = [key, args, st.empty(), st.container()]
+            # custom_fields.append(field_)
+        else:
+            APP_STATE.st_widget(**args)
 
     # Private dataset?
     APP_STATE.st_widget(
@@ -332,6 +341,7 @@ def render_fields_init() -> None:
         key="local_import",
         default_last=False,
     )
+    return custom_fields
 
 
 def render_fields_from_schema(
@@ -386,7 +396,7 @@ def render_fields_from_schema(
                 else:
                     field = APP_STATE.st_widget(st_widget=st.text_area, **kwargs)
             ## Special case: license name (select box)
-            elif prop_uri in ["origin.license.name", "origin.attribution"]:
+            elif prop_uri in URIS_SELECT_CUSTOM:
                 # Special one, need to have responsive behaviour inside form (work around)
                 if categories:
                     with containers[props["category"]]:
@@ -422,6 +432,45 @@ def render_fields_from_schema(
             # Add field to list
             form_fields.append(cast(str, field))
     return form_fields
+
+
+def render_namespace_field(custom_fields: List[Any]) -> None:
+    """Render the attribution field within the form.
+
+    We want the attribution field to be a selectbox, but with the option to add a custom license.
+
+    This is a workaround to have repsonsive behaviour within a form.
+
+    Source: https://discuss.streamlit.io/t/can-i-add-to-a-selectbox-an-other-option-where-the-user-can-add-his-own-answer/28525/5
+    """
+    # Options
+    DEFAULT_OPTION = "wb"
+    options = [
+        DEFAULT_OPTION,
+        "un",
+        "health"
+    ]
+
+    # Default option in select box for custom license
+    CUSTOM_OPTION = "Custom namespace..."
+    # Render and get element depending on selection in selectbox
+    for field in custom_fields:
+        if field[0] == "namespace":
+            with field[2]:
+                field[1]["default_last"] = options[0]
+                attribution_field = APP_STATE.st_widget(
+                    options=[CUSTOM_OPTION] + options,
+                    **field[1],
+                )
+            with field[3]:
+                if attribution_field == CUSTOM_OPTION:
+                    attribution_field = APP_STATE.st_widget(
+                        st.text_input,
+                        label="↳ *Use custom namespace*",
+                        placeholder="",
+                        help="Enter custom license. Make sure to add the explicit attribution and not its format (as in the dropdown options)!",
+                        key=f"{field[0]}_custom",
+                    )
 
 
 def render_license_field(form: List[Any]) -> List[str]:
@@ -478,7 +527,7 @@ def render_license_field(form: List[Any]) -> List[str]:
                 license_field = APP_STATE.st_widget(
                     st.selectbox,
                     label=display_name,
-                    options=["Custom license..."] + options,
+                    options=[CUSTOM_OPTION] + options,
                     help=help_text,
                     key=prop_uri,
                     default_last=options[0],
@@ -566,7 +615,7 @@ Only in rare occasions you will need to define a custom attribution.
                 attribution_field = APP_STATE.st_widget(
                     st.selectbox,
                     label=display_name,
-                    options=["Custom attribution..."] + options,
+                    options=[CUSTOM_OPTION] + options,
                     help=help_text,
                     key=prop_uri,
                     default_last=options[0],
@@ -685,7 +734,7 @@ if st.session_state["show_form"]:
         # 1) Show fields for initial configuration (create directories, etc.)
         # st.header("Config")
         st.markdown("Note that sometimes some fields might not be available (even if they are labelled as required)")
-        render_fields_init()
+        custom_fields_init = render_fields_init()
 
         # 2) Show fields for metadata fields
         # st.header("Metadata")
@@ -693,11 +742,11 @@ if st.session_state["show_form"]:
         #     "Fill the following fields to help us fill all the created files for you! Note that sometimes some fields might not be available (even if they are labelled as required)."
         # )
         # Get categories
-        for k, v in schema_origin.items():
-            if "category" not in v:
-                print(k)
-                print(v)
-                # raise ValueError(f"Category not found for {k}")
+        # for k, v in schema_origin.items():
+        #     if "category" not in v:
+        #         print(k)
+        #         print(v)
+        #         raise ValueError(f"Category not found for {k}")
         categories_in_schema = {v["category"] for k, v in schema_origin.items()}
         assert categories_in_schema == set(
             ACCEPTED_CATEGORIES
@@ -707,6 +756,9 @@ if st.session_state["show_form"]:
 
         # 3) Submit
         submitted = st.form_submit_button("Submit", type="primary", use_container_width=True, on_click=update_state)
+
+    # 1.1) Create fields for attribution (responsive within form)
+    # render_namespace_field(custom_fields_init)
 
     # 2.1) Create fields for attribution (responsive within form)
     form = render_attribution_field(form_metadata)
