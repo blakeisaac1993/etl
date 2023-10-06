@@ -73,11 +73,15 @@ tables:
             <% endif %>
 
             'Life expectancy at age 0' refers to life expectancy at birth. For other ages, it refers to the remaining life expectancy for people who have already survived to the given age.
+        display:
+          numDecimalPlaces: 1
       life_expectancy_fm_diff:
         title: Life expectancy difference (f-m)
         short_unit: years
         unit: years
         description_short: Life expectancy difference (females - males) at a given age.
+        display:
+          numDecimalPlaces: 1
       life_expectancy_fm_ratio:
         title: Life expectancy ratio (f/m)
         unit: ""

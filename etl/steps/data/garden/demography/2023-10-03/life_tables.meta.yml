@@ -25,6 +25,7 @@ tables:
         processing_level: minor
         description_processing: |-
           The original metric is given as a score between 0 and 1 (i.e. per-capita). We multiply this by 1,000 to get a per-1,000 people rate.
+
       probability_of_death:
         title: Probability of death
         unit: "%"
@@ -32,28 +33,34 @@ tables:
         processing_level: minor
         description_processing: |-
           The original metric is given as a score between 0 and 1 (i.e. per-capita). We multiply this by 100 to get a percentage.
+
       average_survival_length:
         title: Average survival length
         short_unit: years
         unit: years
         description_short: Average length of survival between ages x and x+n for persons dying in the interval.
+
       number_survivors:
         title: Number of survivors
         unit: survivors
         description_short: Number of survivors at a given age, assuming survivors at 0 years old is 100,000.
+
       number_deaths:
         title: Number of deaths
         short_unit: deaths
         unit: deaths
         description_short: Number of deaths between during a given age.
+
       number_person_years_lived:
         title: Number of person-years lived
         unit: person-years
         description_short: Number of person-years lived between a given ages and a year after.
+
       number_person_years_remaining:
         title: Number of person-years remaining
         unit: person-years
         description_short: Number of person-years remaining after a given age.
+
       life_expectancy:
         title: Life expectancy
         short_unit: years
@@ -67,11 +74,17 @@ tables:
           <% endif %>
         description_key:
           - Life expectancy at age 0 refers to life expectancy at birth. For other ages, it refers to the remaining life expectancy people who have already survived to the given age.
+        display:
+          numDecimalPlaces: 1
+
       life_expectancy_fm_diff:
         title: Life expectancy difference (f-m)
         short_unit: years
         unit: years
         description_short: Life expectancy difference (females - males) at a given age.
+        display:
+          numDecimalPlaces: 1
+
       life_expectancy_fm_ratio:
         title: Life expectancy ratio (f/m)
         unit: ""
