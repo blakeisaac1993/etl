@@ -49,7 +49,7 @@ def run(dest_dir: str) -> None:
     # Keep data only up to 2018
     tb = tb[tb["year"] <= 2018].reset_index(drop=True)
 
-    # Select columns and multiply by 100 (also keep a list of World Bank poverty method variables)
+    # Select columns and multiply by 100
     cols = [
         "headcount_ratio_cbn",
         "headcount_ratio_190",
