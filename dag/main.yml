@@ -653,6 +653,8 @@ steps:
     - snapshot://moatsos/2023-10-09/moatsos_historical_poverty_5.csv
     - snapshot://moatsos/2023-10-09/moatsos_historical_poverty_10.csv
     - snapshot://moatsos/2023-10-09/moatsos_historical_poverty_30.csv
+  data://garden/moatsos/2023-10-09/moatsos_historical_poverty:
+    - data://meadow/moatsos/2023-10-09/moatsos_historical_poverty
 include:
   - dag/open_numbers.yml
   - dag/faostat.yml
