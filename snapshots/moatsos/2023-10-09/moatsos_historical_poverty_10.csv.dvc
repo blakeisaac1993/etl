@@ -18,7 +18,7 @@ meta:
     # Files
     url_main: https://public.yoda.uu.nl/i-lab/UU01/UOJSYN.html
     url_download: 
-      https://i-lab.public.data.uu.nl/vault-moatsos/LongRunDollarADayAtMultipleLines%5B1663918437%5D/original/Global5.csv
+      https://i-lab.public.data.uu.nl/vault-moatsos/LongRunDollarADayAtMultipleLines%5B1663918437%5D/original/Global10.csv
     date_accessed: 2023-10-09
 
     # License
@@ -28,6 +28,6 @@ meta:
 
 wdir: ../../../data/snapshots/moatsos/2023-10-09
 outs:
-- md5: 6578d3d9e7abd9e8b07831fcb300c456
-  size: 74861
+- md5: 8fd954a1f6163e14914f780eab389b9c
+  size: 74760
   path: moatsos_historical_poverty_10.csv

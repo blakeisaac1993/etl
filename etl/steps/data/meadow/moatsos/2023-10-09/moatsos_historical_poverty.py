@@ -32,9 +32,13 @@ def run(dest_dir: str) -> None:
     # Multiple merge
     tables = [tb_oecd, tb_5, tb_10, tb_30]
     tb = reduce(lambda left, right: pr.merge(left, right, on=["Region", "Year"], how="outer"), tables)
+
+    # Rename columns
+
     tb = tb.rename(
         columns={
             "Region": "country",
+            "Year": "year",
             "PovRate": "headcount_ratio_cbn",
             "PovRate1.9": "headcount_ratio_190",
             "PovRateAt5DAD": "headcount_ratio_500",
@@ -43,7 +47,7 @@ def run(dest_dir: str) -> None:
         }
     )
     # Keep data only up to 2018
-    tb = tb[tb["Year"] <= 2018].reset_index(drop=True)
+    tb = tb[tb["year"] <= 2018].reset_index(drop=True)
 
     # Select columns and multiply by 100 (also keep a list of World Bank poverty method variables)
     cols = [
@@ -53,18 +57,39 @@ def run(dest_dir: str) -> None:
         "headcount_ratio_1000",
         "headcount_ratio_3000",
     ]
-    cols_wb = ["headcount_ratio_190", "headcount_ratio_500", "headcount_ratio_1000", "headcount_ratio_3000"]
 
     tb[cols] *= 100
 
-    # Obtain CBN share for countries and number for regions
-    snap = paths.load_snapshot("moatsos_historical_poverty_oecd_countries_share.csv")
+    # Obtain CBN share for countries
+    snap = paths.load_snapshot("moatsos_historical_poverty_oecd_countries_share.xlsx")
     tb_cbn_share = snap.read(sheet_name="Sheet1", header=2)
 
-    snap = paths.load_snapshot("moatsos_historical_poverty_oecd_regions_number.csv")
+    tb_cbn_share = pr.melt(tb_cbn_share, id_vars=["Year"], var_name="country", value_name="headcount_ratio_cbn")
+    tb_cbn_share = tb_cbn_share.rename(columns={"Year": "year"})
+
+    tb = pr.concat([tb, tb_cbn_share], ignore_index=True)
+
+    # Obtain CBN number for regions
+    snap = paths.load_snapshot("moatsos_historical_poverty_oecd_regions_number.xlsx")
     tb_cbn_number = snap.read(sheet_name="g9-4", header=17)
 
-    tb_cbn_share = pr.melt(tb_cbn_share, id_vars=["Year"], var_name="country", value_name="headcount_ratio_cbn")
+    # Drop and rename columns to adapt the format
+    tb_cbn_number = tb_cbn_number.drop(columns=["Total1820"])
+    tb_cbn_number = tb_cbn_number.rename(columns={"Unnamed: 0": "year"})
+
+    # Transform numbers from millions
+    tb_cbn_number.iloc[:, 1:] = tb_cbn_number.iloc[:, 1:] * 1000000
+
+    # Calculate a World total from the regions
+    tb_cbn_number["World"] = tb_cbn_number.iloc[:, 1:].sum(1)
+
+    tb_cbn_number = pr.melt(tb_cbn_number, id_vars=["year"], var_name="country", value_name="headcount_cbn")
+    tb_cbn_number["headcount_cbn"] = tb_cbn_number["headcount_cbn"].round(0).astype(int)
+
+    # Merge with the main table
+    tb = pr.merge(tb, tb_cbn_number, on=["country", "year"], how="left", short_name="moatsos_historical_poverty")
+
+    # Merge all the tables
 
     #
     # Process data.

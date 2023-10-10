@@ -33,9 +33,8 @@ meta:
     license:
       name: OECD Terms and Conditions
       url: https://www.oecd.org/termsandconditions/
-
 wdir: ../../../data/snapshots/moatsos/2023-10-09
 outs:
 - md5: 1fe10282ed85ec5d146eaa37d20e6b43
   size: 13912
-  path: moatsos_historical_poverty_oecd_countries_share.csv
+  path: moatsos_historical_poverty_oecd_countries_share.xlsx
