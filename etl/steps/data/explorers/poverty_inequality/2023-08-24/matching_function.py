@@ -45,7 +45,7 @@ reference_years = {
 }
 
 # In case of PIP series, we need to define three parameters:
-# - constant_reporting_level: if True (no quotes), the series will be matched only to series with pipreportinglevel = "national". If False, series with pipreportinglevel = "urban" or "rural" will also be matched.
+# - constant_reporting_level: if True (no quotes), the series will be matched only to series with the same pipreportinglevel (only national, only rural or only rural per country). Different countries can have different constant pipreportinglevels. If False, series mixing national, urban or rural are created.
 # - constant_welfare_type: if True (no quotes), the series will be matched only to series with the pipwelfare defined in the income_or_consumpion parameter. If False, income or consumption can be selected.
 # - income_or_consumption: if constant_welfare_type is False, this parameter defines whether to match the series to income or consumption data. The options are "income" or "consumption".
 constant_reporting_level = True
@@ -60,7 +60,9 @@ def match_ref_years(
     series_type: str,
     series: list,
     reference_years: dict,
-    pip_strategy=dict,
+    constant_reporting_level: bool,
+    constant_welfare_type: bool,
+    income_or_consumption: str,
 ) -> pd.DataFrame:
     """
     Match series to reference years.
@@ -92,10 +94,7 @@ def match_ref_years(
         # If source is PIP, filter df_year according to constant_reporting_level and constant_welfare_type
         # Filter df_year according to constant_reporting_level, constant_welfare_type and income_or_consumption
 
-        # Check if constant_reporting_level and constant_welfare_type are boolean
-        assert isinstance(constant_reporting_level, bool), log.error(
-            "`constant_reporting_level` must be boolean: True or False (without quotes)."
-        )
+        # Check if constant_welfare_type is boolean
         assert isinstance(constant_welfare_type, bool), log.error(
             "`constant_welfare_type` must be boolean: True or False (without quotes)."
         )
@@ -103,10 +102,6 @@ def match_ref_years(
         assert income_or_consumption in ["income", "consumption"], log.error(
             "`income_or_consumption` must be either 'income' or 'consumption'."
         )
-        if constant_reporting_level:
-            df_year = df_year[
-                (df_year["pipreportinglevel"] == "national") | (df_year["pipreportinglevel"].isnull())
-            ].reset_index(drop=True)
         if constant_welfare_type:
             df_year = df_year[
                 (df_year["pipwelfare"] == income_or_consumption) | (df_year["pipwelfare"].isnull())
@@ -139,21 +134,74 @@ def match_ref_years(
             "year": f"year_{reference_years_list[0]}",
             "distance": f"distance_{reference_years_list[0]}",
             "value": f"value_{reference_years_list[0]}",
+            "source": f"source_{reference_years_list[0]}",
+            "pipreportinglevel": f"pipreportinglevel_{reference_years_list[0]}",
+            "pipwelfare": f"pipwelfare_{reference_years_list[0]}",
         }
     )
+    # Create a score for PIP data
+    # Create a list of pipreportinglevel_x, with x being each of the reference years
+    pipwelfare_list = []
+    pipreportinglevel_list = []
+    distance_list = []
+    for y in reference_years_list:
+        pipwelfare_list.append(f"pipwelfare_{y}")
+        pipreportinglevel_list.append(f"pipreportinglevel_{y}")
+        distance_list.append(f"distance_{y}")
+
+    # If all the columns in pipwelfare_list are "income", assign a score of 10 to the column df_match["pip_welfare_score"]
+    df_match.loc[df_match[pipwelfare_list].eq("income").all(axis=1), "pip_welfare_score"] = 10
+    # If all the columns in pipwelfare_list are "consumption", assign a score of 5 to the column df_match["pip_welfare_score"]
+    df_match.loc[df_match[pipwelfare_list].eq("consumption").all(axis=1), "pip_welfare_score"] = 5
+    # Assign a score of 0 to the column df_match["pip_welfare_score"] for the rest of the rows
+    df_match["pip_welfare_score"] = df_match["pip_welfare_score"].fillna(0)
+
+    # If all the columns in pipreportinglevel_list are "national", assign a score of 10 to the column df_match["pip_reporting_level_score"]
+    df_match.loc[df_match[pipreportinglevel_list].eq("national").all(axis=1), "pip_reporting_level_score"] = 10
+    # If all the columns in pipreportinglevel_list are "urban", assign a score of 5 to the column df_match["pip_reporting_level_score"]
+    df_match.loc[df_match[pipreportinglevel_list].eq("urban").all(axis=1), "pip_reporting_level_score"] = 5
+    # If all the columns in pipreportinglevel_list are "rural", assign a score of 1 to the column df_match["pip_reporting_level_score"]
+    df_match.loc[df_match[pipreportinglevel_list].eq("rural").all(axis=1), "pip_reporting_level_score"] = 1
+    # Assign a score of 0 to the column df_match["pip_reporting_level_score"] for the rest of the rows
+    df_match["pip_reporting_level_score"] = df_match["pip_reporting_level_score"].fillna(0)
+
+    # Assign pip_reporting_level_equal to True if all the columns in pipreportinglevel_list are equal or all null
+    df_match["pip_reporting_level_equal"] = (
+        df_match[pipreportinglevel_list].eq(df_match[pipreportinglevel_list].iloc[:, 0], axis=0).all(axis=1)
+    ) | (df_match[pipreportinglevel_list].isnull().all(axis=1))
+
+    # Create a score for the cummulative distnace between the reference years
+    # NOTE: I am not using it for now
+    df_match["total_distance"] = df_match[distance_list].sum(axis=1)
+
+    # Check if constant_reporting_level is boolean
+    assert isinstance(constant_reporting_level, bool), log.error(
+        "`constant_reporting_level` must be boolean: True or False (without quotes)."
+    )
+
+    # If constant_reporting_level = True, filter df_match according to pip_reporting_level_equal
+    if constant_reporting_level:
+        df_match = df_match[df_match["pip_reporting_level_equal"]].reset_index(drop=True)
+
+        assert not df_match.empty, log.error(
+            f"No matching data found for reference years {reference_years_list}. Please check `constant_reporting_level` ({constant_reporting_level})."
+        )
+
+    # Export raw combinations of series and reference years
     df_match.to_csv(f"{PARENT_DIR}/df_match_raw.csv", index=False)
+
     # Filter df_match according to tie_break_strategy
     for y in reference_years_list:
         if reference_years[y]["tie_break_strategy"] == "lower":
             # Remove duplicates and keep the row with the minimum distance
-            df_match = df_match.sort_values(by=f"distance_{y}").drop_duplicates(
-                subset=["country", "series_code"], keep="first"
-            )
+            df_match = df_match.sort_values(
+                by=["pip_welfare_score", "pip_reporting_level_score", f"distance_{y}"], ascending=[False, False, True]
+            ).drop_duplicates(subset=["country", "series_code"], keep="first")
         elif reference_years[y]["tie_break_strategy"] == "higher":
             # Remove duplicates and keep the row with the maximum distance
-            df_match = df_match.sort_values(by=f"distance_{y}").drop_duplicates(
-                subset=["country", "series_code"], keep="last"
-            )
+            df_match = df_match.sort_values(
+                by=["pip_welfare_score", "pip_reporting_level_score", f"distance_{y}"], ascending=[False, False, False]
+            ).drop_duplicates(subset=["country", "series_code"], keep="first")
         else:
             raise ValueError("tie_break_strategy must be either 'lower' or 'higher'")
 
@@ -180,9 +228,12 @@ def match_ref_years(
     # Sort by country and year_y
     df_match = df_match.sort_values(by=["series_code", "country"] + year_y_list).reset_index(drop=True)
 
+    # Export matched series
     df_match.to_csv(f"{PARENT_DIR}/df_match.csv", index=False)
 
     return df_match
 
 
-df_match = match_ref_years(df, series_type, series, reference_years)
+df_match = match_ref_years(
+    df, series_type, series, reference_years, constant_reporting_level, constant_welfare_type, income_or_consumption
+)
