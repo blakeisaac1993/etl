@@ -19,17 +19,19 @@ df = pd.DataFrame(df)
 df_percentiles = ds["percentiles"].reset_index()
 df_percentiles = pd.DataFrame(df_percentiles)
 
-# # Create feather files with the data
-# NOTEBOOKS_DIR = Path(__file__).parent.parent.parent.parent.parent.parent.parent.parent.absolute()
-# MATCHING_DIR = f"{NOTEBOOKS_DIR}/notebooks/PabloArriagada/matching_function"
-# df.to_feather(f"{MATCHING_DIR}/tb.feather", compression="zstd")
-# # df_percentiles.to_feather(f"{MATCHING_DIR}/tb_percentiles.feather", compression="zstd")
+df_wdi = ds["wdi"].reset_index()
 
-##############################################
+
+#############################################
 # FUNCTION SETTINGS
 
-# `series` is a list of series codes, e.g. ["gini_wid_pretaxNational_perAdult", "p99p100Share_pip_disposable_perCapita"]
-series = ["gini_wid_pretaxNational_perAdult", "gini_lis_market_perCapita", "gini_pip_disposable_perCapita"]
+# `series` is a list of series codes, e.g. ["average_lis_disposable_equivalized_2017ppp2017", "threshold_lis_market_perCapita_2017ppp2017", "threshold_widExtrapolated_pretaxNational_perAdult_2011ppp2022", "threshold_pip_disposable_perCapita_2017ppp2017"]
+series = [
+    "average_lis_disposable_equivalized_2017ppp2017",
+    "threshold_lis_market_perCapita_2017ppp2017",
+    "threshold_lis_disposable_perAdult_2017ppp2017",
+    "threshold_wid_pretaxNational_perAdult_2011ppp2022",
+]
 
 # reference_years is the list of years to match the series to. Each year is a dictionary with the year as key and a dictionary of parameters as value. The parameters are:
 # - maximum_distance: the maximum distance between the series and the reference year
@@ -43,6 +45,15 @@ reference_years = {
     2018: {"maximum_distance": 5, "tie_break_strategy": "higher", "min_interval": 2},
 }
 
+# Activate lining up function
+lining_up = True
+
+# scale_to_na defines if the numbers are scaled up to national accounts (somewhat similar to what WID does)
+scale_to_na = True
+
+# gdp_type defines if we use GDP in international dollars ("ppp") or in constant USD "constant"
+gdp_type = "ppp"
+
 # In case of PIP series, we need to define three parameters:
 # - constant_reporting_level: if True (no quotes), the series will be matched only to series with the same pipreportinglevel (only national, only rural or only rural per country). Different countries can have different constant pipreportinglevels. If False, series mixing national, urban or rural are created.
 # - constant_welfare_type: if True (no quotes), the series will be matched only to series with the pipwelfare defined in the income_or_consumpion parameter. If False, income or consumption can be selected.
@@ -51,19 +62,15 @@ constant_reporting_level = True
 constant_welfare_type = False
 income_or_consumption = "income"
 
-##############################################
+
+#############################################
 
 
-def match_ref_years(
-    df: pd.DataFrame,
-    series: list,
-    reference_years: dict,
-    constant_reporting_level: bool,
-    constant_welfare_type: bool,
-    income_or_consumption: str,
+def lining_up(
+    df: pd.DataFrame, series: list, reference_years: dict, lining_up: bool, scale_to_na: bool, gdp_type: str
 ) -> pd.DataFrame:
     """
-    Match series to reference years.
+    Main function to lining up the data
     """
 
     # Assert if the series belong to the df
@@ -232,6 +239,6 @@ def match_ref_years(
     return df_match
 
 
-df_match = match_ref_years(
-    df, series, reference_years, constant_reporting_level, constant_welfare_type, income_or_consumption
-)
+# df_match = match_ref_years(
+#     df, series, reference_years, constant_reporting_level, constant_welfare_type, income_or_consumption
+# )

@@ -17,6 +17,7 @@ def run(dest_dir: str) -> None:
     ds_pip = paths.load_dataset("poverty_inequality")
     ds_lis = paths.load_dataset("luxembourg_income_study")
     ds_wid = paths.load_dataset("world_inequality_database")
+    ds_wdi = paths.load_dataset("wdi")
 
     # Read table from garden dataset.
     tb_pip = ds_pip["poverty_inequality"].reset_index()
@@ -28,6 +29,10 @@ def run(dest_dir: str) -> None:
     tb_wid_percentiles = ds_wid["world_inequality_database_distribution"].reset_index()
     tb_lis_percentiles_adults = ds_lis["lis_percentiles_adults"].reset_index()
 
+    tb_wdi = ds_wdi["wdi"].reset_index()
+
+    # Process tables
+
     tb_pip_keyvars = create_keyvars_file_pip(tb_pip)
     tb_lis_keyvars = create_keyvars_file_lis(tb_lis, adults=False)
     tb_lis_keyvars_adults = create_keyvars_file_lis(tb_lis_adults, adults=True)
@@ -37,6 +42,8 @@ def run(dest_dir: str) -> None:
     tb_lis_percentiles = create_percentiles_file_lis(tb_lis_percentiles, adults=False)
     tb_lis_percentiles_adults = create_percentiles_file_lis(tb_lis_percentiles_adults, adults=True)
     tb_wid_percentiles, tb_wid_percentiles_extrapolated = create_percentiles_file_wid(tb_wid_percentiles)
+
+    tb_wdi = extract_gdp_from_wdi(tb_wdi)
 
     # Concatenate all the tables
     tb = pr.concat(
@@ -117,7 +124,7 @@ def run(dest_dir: str) -> None:
     # Create explorer dataset, with garden table and metadata in csv format
     ds_explorer = create_dataset(
         dest_dir,
-        tables=[tb, tb_percentiles],
+        tables=[tb, tb_percentiles, tb_wdi],
         formats=["csv"],
         default_metadata=ds_lis.metadata,
     )
@@ -667,3 +674,20 @@ def create_percentiles_file_wid(tb_wid_percentiles) -> Table:
     )
 
     return tb_wid_percentiles, tb_wid_percentiles_extrapolated
+
+
+def extract_gdp_from_wdi(tb_wdi: Table) -> Table:
+    """
+    Load the table from WDI, to extract different GDP indicators
+    """
+
+    # Define list of GDP indicators
+    gdp_list = [
+        "ny_gdp_mktp_pp_kd",  # constant 2017 international $
+        "ny_gdp_mktp_kd",  # constant 2015 US$
+    ]
+
+    # Select the columns to keep
+    tb_wdi = tb_wdi[["country", "year"] + gdp_list]
+
+    return tb_wdi

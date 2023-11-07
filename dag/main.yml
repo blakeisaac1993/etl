@@ -300,6 +300,7 @@ steps:
   - data://garden/lis/2023-08-30/luxembourg_income_study
   - data://garden/wid/2023-08-24/world_inequality_database
   - data://explorers/poverty_inequality/2023-08-24/poverty_inequality
+  - data://garden/worldbank_wdi/2023-05-29/wdi
 
   # Global mobile money dataset (GSMA)
   data://meadow/technology/2023-03-06/mobile_money:
