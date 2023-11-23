@@ -3,5 +3,9 @@ tables:
     variables:
       is_present:
         title: Sovereign state
-        description_short: Whether the country is present in the Gleditsch and Ward countries dataset.
+        description_short:
+          Whether a country is considered a sovereign state by Gleditsch and Ward.
+        description_key:
+          - |-
+            Gleditsch and Ward consider a country a sovereign state if its administration of a territory is relatively autonomous and it is considered independent by local actors and other states. They discuss many cases here: http://ksgleditsch.com/data/iisyst_casedesc.pdf
         unit: ""
