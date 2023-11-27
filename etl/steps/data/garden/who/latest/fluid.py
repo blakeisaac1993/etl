@@ -272,7 +272,19 @@ def remove_sparse_years(df: pd.DataFrame, min_datapoints_per_year: int) -> pd.Da
     """
 
     df["year"] = pd.to_datetime(df["date"]).dt.year
-    constant_cols = ["country", "date", "hemisphere", "year"]
+    # AH5 and AH7N9 cases are rare and we don't want them to be accidentally removed
+    constant_cols = [
+        "country",
+        "date",
+        "hemisphere",
+        "year",
+        "ah5NONSENTINEL",
+        "ah5NOTDEFINED",
+        "ah5SENTINEL",
+        "ah7n9NONSENTINEL",
+        "ah7n9NOTDEFINED",
+        "ah7n9SENTINEL",
+    ]
     cols = df.columns.drop(constant_cols)
     current_year = datetime.today().year
     for col in cols:
