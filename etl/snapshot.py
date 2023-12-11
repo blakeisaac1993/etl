@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from dvc.repo import Repo
 
 from etl import config, paths
-from etl.files import RuntimeCache, yaml_dump
+from etl.files import RuntimeCache, checksum_file, ruamel_dump, ruamel_load, yaml_dump
 
 # DVC is not thread-safe, so we need to lock it
 dvc_lock = Lock()
@@ -118,45 +118,82 @@ class Snapshot:
 
     def pull(self, force=True) -> None:
         """Pull file from S3."""
+        # from dvc.exceptions import CheckoutError
+
+        # # DVC must be locked across processes. This is pretty limiting as it allows us to only pull
+        # # one snapshot at a time. One option is to pre-pull all snapshot steps.
+        # with dvc_pull_lock, _unignore_backports(self.path):
+        #     try:
+        #         repo = self._cached_dvc_repo()
+        #         repo.pull(str(self.path), remote="public-read" if self.metadata.is_public else "private", force=force)
+        #     except CheckoutError as e:
+        #         raise Exception(
+        #             "File not found in DVC. Have you run the snapshot script? Make sure you're not using `is_public: false`."
+        #         ) from e
+
         if not force and not self.is_dirty():
             return
 
-        from dvc.exceptions import CheckoutError
+        assert len(self.metadata.outs) == 1
+        md5 = self.metadata.outs[0]["md5"]
 
-        # DVC locking is terrible. It'd fail if we didn't use our own file locks.
-        # This is pretty limiting as it allows us to only pull
-        # one snapshot at a time. One option is to pre-pull all snapshot steps or
-        # we could just download the file directly.
-        # The combination of different kinds of locks is kinda magical and waiting
-        # to be refactored soon.
-        with dvc_pull_lock, _unignore_backports(self.path):
-            try:
-                repo = self._cached_dvc_repo()
-                repo.pull(str(self.path), remote="public-read" if self.metadata.is_public else "private", force=force)
-            except CheckoutError as e:
-                raise Exception(
-                    "File not found in DVC. Have you run the snapshot script? Make sure you're not using `is_public: false`."
-                ) from e
+        self.path.parent.mkdir(exist_ok=True, parents=True)
+
+        if self.metadata.is_public:
+            download_url = f"https://snapshots.owid.io/{md5[:2]}/{md5[2:]}"
+            files.download(download_url, str(self.path), progress_bar_min_bytes=2**100)
+        else:
+            download_url = f"s3://owid-snapshots-private/{md5[:2]}/{md5[2:]}"
+            s3_utils.download(download_url, str(self.path))
+
+        # TODO: why is md5 checksum not corresponding to the file in S3?
+
+        # update metadata
+        with open(self.metadata_path, "r") as f:
+            m = ruamel_load(f)
+
+        m["outs"][0]["md5"] = checksum_file(self.path)
+        m["outs"][0]["size"] = self.path.stat().st_size
+        m["outs"][0]["path"] = self.path.name
+
+        with open(self.metadata_path, "w") as f:
+            f.write(ruamel_dump(m))
 
     def is_dirty(self) -> bool:
         """Return True if snapshot exists and is in DVC."""
-        from dvc.dvcfile import load_file
+        # from dvc.dvcfile import load_file
+
+        # if not self.path.exists():
+        #     return True
+
+        # with open(self.metadata_path) as istream:
+        #     if "outs:\n" not in istream.read():
+        #         raise Exception(f"File {self.metadata_path} has not been added to DVC. Run snapshot script to add it.")
+
+        # print(f"Checking {self.path}...")
+
+        # with dvc_lock, _unignore_backports(self.metadata_path):
+        #     repo = self._cached_dvc_repo()
+        #     dvc_file = load_file(repo, self.metadata_path.as_posix())
+        #     with repo.lock:
+        #         # DVC returns empty dictionary if file is up to date
+        #         stage = dvc_file.stage
+        #         return stage.status() != {}
 
         if not self.path.exists():
             return True
 
-        with open(self.metadata_path) as istream:
-            if "outs:\n" not in istream.read():
-                raise Exception(f"File {self.metadata_path} has not been added to DVC. Run snapshot script to add it.")
+        if self.metadata.outs is None:
+            raise Exception(f"File {self.metadata_path} has not been added to DVC. Run snapshot script to add it.")
 
-        # See notes about locking in `pull` method.
-        with dvc_lock, _unignore_backports(self.metadata_path):
-            repo = self._cached_dvc_repo()
-            dvc_file = load_file(repo, self.metadata_path.as_posix())
-            with repo.lock:
-                # DVC returns empty dictionary if file is up to date
-                stage = dvc_file.stage
-                return stage.status() != {}
+        assert len(self.metadata.outs) == 1
+        file_size = self.path.stat().st_size
+        # Compare file size if it's larger than 10MB, otherwise compare md5
+        # This should be pretty safe and speeds up the process significantly
+        if file_size >= 10 * 2**20:  # 10MB
+            return file_size != self.m.outs[0]["size"]
+        else:
+            return checksum_file(self.path.as_posix()) != self.m.outs[0]["md5"]
 
     def delete_local(self) -> None:
         """Delete local file and its metadata."""
