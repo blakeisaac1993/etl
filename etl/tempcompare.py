@@ -137,8 +137,8 @@ def series_equals(
     # then compare the rest of non-nan values (we cannot compare the entire series because pandas
     # complains with `TypeError: boolean value of NA is ambiguous`)
     ix = ~s1.isnull() & ~s2.isnull()
-    eq[ix] |= s1[ix].eq(s2[ix])
-    return eq
+    eq[ix] |= s1[ix].eq(s2[ix])  # NOTE: this can change dtype of eq to object
+    return eq.astype(bool)
 
 
 def df_equals(df1: pd.DataFrame, df2: pd.DataFrame, **kwargs) -> pd.DataFrame:
