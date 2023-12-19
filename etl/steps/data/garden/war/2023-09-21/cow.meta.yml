@@ -46,10 +46,8 @@ definitions:
         <% endif %>
       - We count a war as ongoing in a region even if the conflict is also ongoing in other regions. The sum across all regions can therefore be higher than the total number of ongoing wars.
       - |-
-        <% if conflict_type == "all" %>
-        We extend the time-series to 2007, by drawing on Correlates of War's Directed Dyadic Interstate War Dataset (version 4.01), which identifies no interstate wars for the years since 2003.
-        <% elif conflict_type == "inter-state" %>
-        We extend the time-series to 2010, by drawing on Correlates of War's Directed Dyadic Interstate War Dataset (version 4.01), which identifies no wars for the years since 2003.
+        <% if conflict_type == "inter-state" %>
+        We extend the time-series to 2010, by drawing on Correlates of War’s Directed Dyadic Interstate War Dataset (version 4.01), which identifies no wars for the years since 2003.
         <% endif %>
   number_new_conflicts:
     description_short: |-
@@ -95,9 +93,7 @@ definitions:
         We also only count a non-internationalized intrastate war as new when the war overall started that year, not if it stopped being internationalized.
         <% endif %>
       - |-
-        <% if conflict_type == "all" %>
-        We extend the time-series to 2007, by drawing on Correlates of War's Directed Dyadic Interstate War Dataset (version 4.01), which identifies no interstate wars for the years since 2003.
-        <% elif conflict_type == "inter-state" %>
+        <% if conflict_type == "inter-state" %>
         We extend the time-series to 2010, by drawing on Correlates of War's Directed Dyadic Interstate War Dataset (version 4.01), which identifies no wars for the years since 2003.
         <% endif %>
   number_deaths:
@@ -144,10 +140,8 @@ definitions:
         If a war was ongoing in more than one world region, we distributed its deaths across the regions of the participants.
         <% endif %>
       - |-
-        <% if conflict_type == "all" %>
-        We extend the time-series to 2007, by drawing on Correlates of War's Directed Dyadic Interstate War Dataset (version 4.01), which identifies no interstate wars for the years since 2003.
-        <% elif conflict_type == "inter-state" %>
-        We extend the time-series to 2010, by drawing on Correlates of War's Directed Dyadic Interstate War Dataset (version 4.01), which identifies no wars for the years since 2003.
+        <% if conflict_type == "inter-state" %>
+        We extend the time-series to 2010, by drawing on Correlates of War’s Directed Dyadic Interstate War Dataset (version 4.01), which identifies no wars for the years since 2003.
         <% endif %>
 
 dataset:
