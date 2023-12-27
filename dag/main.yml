@@ -721,10 +721,13 @@ steps:
   # Copernicus Climate Change Service - Surface temperature
   data://meadow/climate/2023-12-20/surface_temperature:
   - snapshot://climate/2023-12-20/surface_temperature.nc
+  - snapshot://countries/2023-12-27/world_bank.zip
+
   data://garden/climate/2023-12-20/surface_temperature:
   - data://meadow/climate/2023-12-20/surface_temperature
   data://grapher/climate/2023-12-20/surface_temperature:
   - data://garden/climate/2023-12-20/surface_temperature
+
 
   ######################################################################################################################
   # Older versions to be archived once they are not used by any other steps.
