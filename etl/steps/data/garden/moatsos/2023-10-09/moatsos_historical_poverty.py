@@ -75,6 +75,8 @@ def run(dest_dir: str) -> None:
     )
     tb = tb.set_index(["country", "year"], verify_integrity=True)
 
+    tb.to_csv("moatsos_historical_poverty.csv")
+
     #
     # Save outputs.
     #

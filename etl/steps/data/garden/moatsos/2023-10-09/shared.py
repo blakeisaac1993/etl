@@ -8,19 +8,13 @@ from owid.catalog import Table, VariableMeta
 # These is text common to all variables
 
 cbd_description = """
-The ‘cost of basic needs’-approach was recommended by the ‘World Bank Commission on Global Poverty’, headed by Tony Atkinson, as a complementary method in measuring poverty.
+- The ‘cost of basic needs’ approach was recommended by the World Bank Commission on Global Poverty, headed by Tony Atkinson, as a complementary method in measuring poverty.
 
-Tony Atkinson – and after his death his colleagues – turned this report into a book that was published as Anthony B. Atkinson (2019) – Measuring Poverty around the World. You find more information on Atkinson’s website.
-
-The CBN-approach Moatsos’ work is based on was suggested by Allen in Robert Allen (2017) – Absolute poverty: When necessity displaces desire. In American Economic Review, Vol. 107/12, pp. 3690-3721, https://doi.org/10.1257/aer.20161080
-
-Moatsos describes the methodology as follows: “In this approach, poverty lines are calculated for every year and country separately, rather than using a single global line. The second step is to gather the necessary data to operationalise this approach, alongside imputation methods in cases where not all the necessary data are available. The third step is to devise a method for aggregating countries’ poverty estimates on a global scale to account for countries that lack some of the relevant data.” In his publication – linked above – you find much more detail on all of the shown poverty data.
+- Moatsos describes the methodology as follows: “In this approach, poverty lines are calculated for every year and country separately, rather than using a single global line. The second step is to gather the necessary data to operationalize this approach alongside imputation methods in cases where not all the necessary data are available. The third step is to devise a method for aggregating countries’ poverty estimates on a global scale to account for countries that lack some of the relevant data.”
 """
 
 dod_description = """
-This data is adjusted for inflation and for differences in the cost of living between countries. Data after 1981 relates to household
-income or expenditure surveys collated by the World Bank; before 1981 it is based on historical reconstructions of GDP per
-capita and inequality data.
+Data after 1981 relates to household income or consumption surveys collated by the World Bank; before 1981 it is based on historical reconstructions of GDP per capita and inequality data.
 """
 
 ppp_description = "The data is measured in international-$ at 2011 prices – this adjusts for inflation and for differences in the cost of living between countries."
@@ -59,20 +53,80 @@ cbn_dict = {
 }
 
 
-# This function creates the metadata for each variable in the LIS dataset, from the dictionaries defined above
+# This function creates the metadata for each variable in the dataset, from the dictionaries defined above
 def add_metadata_vars(tb_garden: Table):
     # Get a list of all the variables available
     cols = list(tb_garden.columns)
 
     for var in var_dict:
-        for wel in inc_cons_dict:
-            for e in equivalence_scales_dict:
-                # For variables that use income variable and equivalence scale
-                col_name = f"{var}_{wel}_{e}"
+        for povline in povline_dict:
+            # For variables that "dollar a day" poverty lines
+            col_name = f"{var}_{povline}"
+
+            if col_name in cols:
+                # Create metadata for these variables
+                tb_garden[col_name].metadata = var_metadata_absolute(var, povline)
+
+                tb_garden[col_name].metadata.description = tb_garden[col_name].metadata.description_short.replace(
+                    "{povline}", str(povline_dict[povline]["description"])
+                )
+
+        for cbn in cbn_dict:
+            # For variables that use the CBN method
+            col_name = f"{var}_{cbn}"
+
+            if col_name in cols:
+                # Create metadata for these variables
+                tb_garden[col_name].metadata = var_metadata_cbn(var, cbn)
+
+                tb_garden[col_name].metadata.description = tb_garden[col_name].metadata.description_short.replace(
+                    "{povline}", cbn_dict[cbn]["description"]
+                )
+
+            for rel in rel_dict:
+                # For variables that use income variable, equivalence scale and relative poverty lines
+                col_name = f"{var}_{rel}_median_{wel}_{e}"
 
                 if col_name in cols:
                     # Create metadata for these variables
-                    tb_garden[col_name].metadata = var_metadata_income_and_equivalence_scale(var, wel, e)
+                    tb_garden[col_name].metadata = var_metadata_income_equivalence_scale_relative(var, wel, e, rel)
+
+                    # Replace values in description according to `rel`
+                    tb_garden[col_name].metadata.description = tb_garden[col_name].metadata.description.replace(
+                        "{povline}", rel_dict[rel]
+                    )
+
+            for abs in abs_dict:
+                # For variables that use income variable, equivalence scale and absolute poverty lines
+                col_name = f"{var}_{wel}_{e}_{abs}"
+
+                if col_name in cols:
+                    # Create metadata for these variables
+                    tb_garden[col_name].metadata = var_metadata_income_equivalence_scale_absolute(var, wel, e, abs)
+
+                    # Replace values in description according to `abs`
+                    tb_garden[col_name].metadata.description = tb_garden[col_name].metadata.description.replace(
+                        "{povline}", abs_dict[abs]
+                    )
+
+            for pct in pct_dict:
+                # For variables that use income variable, equivalence scale and percentiles (deciles)
+                col_name = f"{var}_p{pct}_{wel}_{e}"
+
+                if col_name in cols:
+                    # Create metadata for these variables
+                    tb_garden[col_name].metadata = var_metadata_income_equivalence_scale_percentiles(var, wel, e, pct)
+
+                    # Replace values in description according to `pct`, depending on `var`
+                    if var == "thr":
+                        tb_garden[col_name].metadata.description = tb_garden[col_name].metadata.description.replace(
+                            "{str(pct)}", str(pct)
+                        )
+
+                    else:
+                        tb_garden[col_name].metadata.description = tb_garden[col_name].metadata.description.replace(
+                            "{pct_dict[pct]['decile10']}", pct_dict[pct]["decile10"].lower()
+                        )
 
                     # Replace income/wealth words according to `wel`
                     tb_garden[col_name].metadata.description = tb_garden[col_name].metadata.description.replace(
@@ -82,114 +136,41 @@ def add_metadata_vars(tb_garden: Table):
                         "{inc_cons_dict[wel]['type']}", str(inc_cons_dict[wel]["type"])
                     )
 
-                for rel in rel_dict:
-                    # For variables that use income variable, equivalence scale and relative poverty lines
-                    col_name = f"{var}_{rel}_median_{wel}_{e}"
-
-                    if col_name in cols:
-                        # Create metadata for these variables
-                        tb_garden[col_name].metadata = var_metadata_income_equivalence_scale_relative(var, wel, e, rel)
-
-                        # Replace values in description according to `rel`
-                        tb_garden[col_name].metadata.description = tb_garden[col_name].metadata.description.replace(
-                            "{povline}", rel_dict[rel]
-                        )
-
-                for abs in abs_dict:
-                    # For variables that use income variable, equivalence scale and absolute poverty lines
-                    col_name = f"{var}_{wel}_{e}_{abs}"
-
-                    if col_name in cols:
-                        # Create metadata for these variables
-                        tb_garden[col_name].metadata = var_metadata_income_equivalence_scale_absolute(var, wel, e, abs)
-
-                        # Replace values in description according to `abs`
-                        tb_garden[col_name].metadata.description = tb_garden[col_name].metadata.description.replace(
-                            "{povline}", abs_dict[abs]
-                        )
-
-                for pct in pct_dict:
-                    # For variables that use income variable, equivalence scale and percentiles (deciles)
-                    col_name = f"{var}_p{pct}_{wel}_{e}"
-
-                    if col_name in cols:
-                        # Create metadata for these variables
-                        tb_garden[col_name].metadata = var_metadata_income_equivalence_scale_percentiles(
-                            var, wel, e, pct
-                        )
-
-                        # Replace values in description according to `pct`, depending on `var`
-                        if var == "thr":
-                            tb_garden[col_name].metadata.description = tb_garden[col_name].metadata.description.replace(
-                                "{str(pct)}", str(pct)
-                            )
-
-                        else:
-                            tb_garden[col_name].metadata.description = tb_garden[col_name].metadata.description.replace(
-                                "{pct_dict[pct]['decile10']}", pct_dict[pct]["decile10"].lower()
-                            )
-
-                        # Replace income/wealth words according to `wel`
-                        tb_garden[col_name].metadata.description = tb_garden[col_name].metadata.description.replace(
-                            "{inc_cons_dict[wel]['verb']}", str(inc_cons_dict[wel]["verb"])
-                        )
-                        tb_garden[col_name].metadata.description = tb_garden[col_name].metadata.description.replace(
-                            "{inc_cons_dict[wel]['type']}", str(inc_cons_dict[wel]["type"])
-                        )
-
     return tb_garden
 
 
 # Metadata functions to show a clearer main code
-def var_metadata_income_and_equivalence_scale(var, wel, e) -> VariableMeta:
-    # Add ppp description to monetary variables
-    if var == "mean" or var == "median":
-        meta = VariableMeta(
-            title=f"{var_dict[var]['title']} ({inc_cons_dict[wel]['name']}, {equivalence_scales_dict[e]['name']})",
-            description=f"""{var_dict[var]['description']}
+def var_metadata_absolute(var, povline) -> VariableMeta:
+    meta = VariableMeta(
+        title=f"{povline_dict[povline]['title']} - {var_dict[var]['title']}",
+        description_short=f"""{var_dict[var]['description']}""",
+        description_key=f"""
+        - {ppp_description}
+        - {dod_description}""",
+        unit=var_dict[var]["unit"],
+        short_unit=var_dict[var]["short_unit"],
+    )
+    meta.display = {
+        "name": meta.title,
+        "numDecimalPlaces": var_dict[var]["numDecimalPlaces"],
+    }
 
-            {inc_cons_dict[wel]['description']}
+    return meta
 
-            {equivalence_scales_dict[e]['description']}
 
-            {ppp_description}
+def var_metadata_cbn(var, cbn) -> VariableMeta:
+    meta = VariableMeta(
+        title=f"{cbn_dict[cbn]['title']} - {var_dict[var]['title']}",
+        description_short=f"""{var_dict[var]['description']}""",
+        description_key=f"""{cbd_description}""",
+        unit=var_dict[var]["unit"],
+        short_unit=var_dict[var]["short_unit"],
+    )
+    meta.display = {
+        "name": meta.title,
+        "numDecimalPlaces": var_dict[var]["numDecimalPlaces"],
+    }
 
-            {notes_title}
-
-            {processing_description}
-
-            {processing_gini_mean_median}""",
-            unit=var_dict[var]["unit"],
-            short_unit=var_dict[var]["short_unit"],
-        )
-        meta.display = {
-            "name": meta.title,
-            "numDecimalPlaces": var_dict[var]["numDecimalPlaces"],
-        }
-    # For inequality vars we don't need to add ppp description
-    else:
-        meta = VariableMeta(
-            title=f"{var_dict[var]['title']} ({inc_cons_dict[wel]['name']}, {equivalence_scales_dict[e]['name']})",
-            description=f"""{var_dict[var]['description']}
-
-            {inc_cons_dict[wel]['description']}
-
-            {equivalence_scales_dict[e]['description']}
-
-            {notes_title}
-
-            {processing_description}
-
-            {processing_gini_mean_median}
-
-            {processing_distribution}""",
-            unit=var_dict[var]["unit"],
-            short_unit=var_dict[var]["short_unit"],
-        )
-        meta.display = {
-            "name": meta.title,
-            "numDecimalPlaces": var_dict[var]["numDecimalPlaces"],
-        }
     return meta
 
 
