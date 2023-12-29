@@ -19,6 +19,10 @@ Data after 1981 relates to household income or consumption surveys collated by t
 
 ppp_description = "The data is measured in international-$ at 2011 prices – this adjusts for inflation and for differences in the cost of living between countries."
 
+processing_description = """
+From the share and number unable to meet basic needs available in the dataset, we can estimate the number below different "dollar a day" poverty lines. Additionally, we estimate the share and number above these poverty lines, as well between them. We also estimate the share and number of people able to meet basic needs.
+"""
+
 # These are parameters specifically defined for each type of variable
 var_dict = {
     "headcount": {
@@ -147,10 +151,11 @@ def add_metadata_vars(tb_garden: Table):
 def var_metadata_absolute(var, povline) -> VariableMeta:
     meta = VariableMeta(
         title=f"{povline_dict[povline]['title']} - {var_dict[var]['title']}",
-        description_short=f"""{var_dict[var]['description']}""",
+        description_short=var_dict[var]["description"],
         description_key=f"""
         - {ppp_description}
         - {dod_description}""",
+        description_processing=processing_description,
         unit=var_dict[var]["unit"],
         short_unit=var_dict[var]["short_unit"],
     )
@@ -166,10 +171,11 @@ def var_metadata_absolute(var, povline) -> VariableMeta:
 def var_metadata_between(var, povline1, povline2) -> VariableMeta:
     meta = VariableMeta(
         title=f"{povline_dict[povline1]['title_between']}-{povline_dict[povline2]['title_between']} - {var_dict[var]['title']}",
-        description_short=f"""{var_dict[var]['description']}""",
+        description_short=var_dict[var]["description"],
         description_key=f"""
         - {ppp_description}
         - {dod_description}""",
+        description_processing=processing_description,
         unit=var_dict[var]["unit"],
         short_unit=var_dict[var]["short_unit"],
     )
@@ -185,8 +191,9 @@ def var_metadata_between(var, povline1, povline2) -> VariableMeta:
 def var_metadata_cbn(var, cbn) -> VariableMeta:
     meta = VariableMeta(
         title=f"{cbn_dict[cbn]['title']} - {var_dict[var]['title']}",
-        description_short=f"""{var_dict[var]['description']}""",
-        description_key=f"""{cbd_description}""",
+        description_short=var_dict[var]["description"],
+        description_key=cbd_description,
+        description_processing=processing_description,
         unit=var_dict[var]["unit"],
         short_unit=var_dict[var]["short_unit"],
     )

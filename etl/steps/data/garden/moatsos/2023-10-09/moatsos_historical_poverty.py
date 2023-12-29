@@ -63,7 +63,7 @@ def create_above_and_between_vars(tb: Table) -> Table:
         tb[f"headcount_{povline}"] = tb[f"headcount_ratio_{povline}"] * tb["pop"] / 100
         cols_number.append(f"headcount_{povline}")
 
-    # Share of people above poverty lines
+    # Share and number of people above poverty lines
     for povline in poverty_lines:
         tb[f"headcount_ratio_above_{povline}"] = 100 - tb[f"headcount_ratio_{povline}"]
         cols_above.append(f"headcount_ratio_above_{povline}")
@@ -76,7 +76,7 @@ def create_above_and_between_vars(tb: Table) -> Table:
     tb["headcount_above_cbn"] = tb["headcount_ratio_above_cbn"] * tb["pop"] / 100
     cols_number_above.append("headcount_above_cbn")
 
-    # Share of people in between poverty lines (World Bank)
+    # Share and number of people in between poverty lines (World Bank)
     # For each poverty line in cols_wb
     for i in range(len(poverty_lines)):
         if i != 0:
