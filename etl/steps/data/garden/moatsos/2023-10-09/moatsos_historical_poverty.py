@@ -170,4 +170,7 @@ def create_above_and_between_vars(tb: Table, poverty_lines: list, smooth_suffix:
         cols_number + cols_number_above + cols_number_between
     ].round()
 
+    # Remove pop column
+    tb = tb.drop(columns=["pop"])
+
     return tb
