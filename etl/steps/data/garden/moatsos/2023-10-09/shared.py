@@ -7,10 +7,12 @@ from owid.catalog import Table, VariableMeta
 
 # These is text common to all variables
 
-cbd_description = """
-- The ‘cost of basic needs’ approach was recommended by the World Bank Commission on Global Poverty, headed by Tony Atkinson, as a complementary method in measuring poverty.
+cbd_description_1 = """
+The ‘cost of basic needs’ approach was recommended by the World Bank Commission on Global Poverty, headed by Tony Atkinson, as a complementary method in measuring poverty.
+"""
 
-- Moatsos describes the methodology as follows: “In this approach, poverty lines are calculated for every year and country separately, rather than using a single global line. The second step is to gather the necessary data to operationalize this approach alongside imputation methods in cases where not all the necessary data are available. The third step is to devise a method for aggregating countries’ poverty estimates on a global scale to account for countries that lack some of the relevant data.”
+cbd_description_2 = """
+Moatsos describes the methodology as follows: “In this approach, poverty lines are calculated for every year and country separately, rather than using a single global line. The second step is to gather the necessary data to operationalize this approach alongside imputation methods in cases where not all the necessary data are available. The third step is to devise a method for aggregating countries’ poverty estimates on a global scale to account for countries that lack some of the relevant data.”
 """
 
 dod_description = """
@@ -152,9 +154,7 @@ def var_metadata_absolute(var, povline) -> VariableMeta:
     meta = VariableMeta(
         title=f"{povline_dict[povline]['title']} - {var_dict[var]['title']}",
         description_short=var_dict[var]["description"],
-        description_key=f"""
-        - {ppp_description}
-        - {dod_description}""",
+        description_key=[ppp_description, dod_description],
         description_processing=processing_description,
         unit=var_dict[var]["unit"],
         short_unit=var_dict[var]["short_unit"],
@@ -172,9 +172,7 @@ def var_metadata_between(var, povline1, povline2) -> VariableMeta:
     meta = VariableMeta(
         title=f"{povline_dict[povline1]['title_between']}-{povline_dict[povline2]['title_between']} - {var_dict[var]['title']}",
         description_short=var_dict[var]["description"],
-        description_key=f"""
-        - {ppp_description}
-        - {dod_description}""",
+        description_key=[ppp_description, dod_description],
         description_processing=processing_description,
         unit=var_dict[var]["unit"],
         short_unit=var_dict[var]["short_unit"],
@@ -192,7 +190,7 @@ def var_metadata_cbn(var, cbn) -> VariableMeta:
     meta = VariableMeta(
         title=f"{cbn_dict[cbn]['title']} - {var_dict[var]['title']}",
         description_short=var_dict[var]["description"],
-        description_key=cbd_description,
+        description_key=[cbd_description_1, cbd_description_2],
         description_processing=processing_description,
         unit=var_dict[var]["unit"],
         short_unit=var_dict[var]["short_unit"],
