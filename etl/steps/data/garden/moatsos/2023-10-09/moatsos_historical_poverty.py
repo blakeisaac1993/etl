@@ -1,5 +1,6 @@
 """Load a meadow dataset and create a garden dataset."""
 
+from owid.catalog import Table
 from shared import add_metadata_vars
 
 from etl.data_helpers import geo
@@ -21,10 +22,27 @@ def run(dest_dir: str) -> None:
 
     #
     # Process data.
+    tb = create_above_and_between_vars(tb)
+
     #
+    # Save outputs.
+    #
+    # Create a new garden dataset with the same metadata as the meadow dataset.
+    ds_garden = create_dataset(
+        dest_dir, tables=[tb], check_variables_metadata=True, default_metadata=ds_meadow.metadata
+    )
+
+    # Save changes in the new garden dataset.
+    ds_garden.save()
+
+
+def create_above_and_between_vars(tb: Table) -> Table:
+    """
+    Create additional variables from the share and number in poverty: above and between poverty lines (or CBN).
+    Also, add metadata to these variables.
+    """
     # Add population column to estimate other variables
     tb["pop"] = tb["headcount_cbn"] / (tb["headcount_ratio_cbn"] / 100)
-    # -
 
     # Create additional variables
     # Define columns to use
@@ -86,13 +104,4 @@ def run(dest_dir: str) -> None:
     # Add metadata by code
     tb = add_metadata_vars(tb)
 
-    #
-    # Save outputs.
-    #
-    # Create a new garden dataset with the same metadata as the meadow dataset.
-    ds_garden = create_dataset(
-        dest_dir, tables=[tb], check_variables_metadata=True, default_metadata=ds_meadow.metadata
-    )
-
-    # Save changes in the new garden dataset.
-    ds_garden.save()
+    return tb
