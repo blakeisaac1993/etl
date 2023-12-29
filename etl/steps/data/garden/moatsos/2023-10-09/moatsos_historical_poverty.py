@@ -9,6 +9,16 @@ from etl.helpers import PathFinder, create_dataset
 # Get paths and naming conventions for current step.
 paths = PathFinder(__file__)
 
+poverty_lines = [
+    "190",
+    "500",
+    "1000",
+    "3000",
+]
+
+FIRST_YEAR = 1820
+LAST_YEAR = 2018
+
 
 def run(dest_dir: str) -> None:
     #
@@ -22,7 +32,12 @@ def run(dest_dir: str) -> None:
 
     #
     # Process data.
-    tb = create_above_and_between_vars(tb)
+
+    # Smooth estimates to address uncertainty
+    tb = smooth_estimates(tb, poverty_lines)
+
+    # Create headcount, above and between poverty lines variables
+    tb = create_above_and_between_vars(tb, poverty_lines)
 
     #
     # Save outputs.
@@ -36,7 +51,54 @@ def run(dest_dir: str) -> None:
     ds_garden.save()
 
 
-def create_above_and_between_vars(tb: Table) -> Table:
+def smooth_estimates(tb: Table, poverty_lines: list) -> Table:
+    """
+    Smooth estimates to address uncertainty
+    """
+
+    tb_smooth = tb.copy()
+
+    # Sort by country and year
+    tb_smooth = tb_smooth.sort_values(["country", "year"]).reset_index(drop=True)
+
+    smooth_cols = []
+
+    for povline in poverty_lines:
+        # Calculate 10-year rolling averages per country
+        tb_smooth[f"headcount_ratio_{povline}_smooth"] = tb_smooth.groupby("country")[
+            f"headcount_ratio_{povline}"
+        ].transform(lambda x: x.rolling(10, 1).mean())
+        smooth_cols.append(f"headcount_ratio_{povline}_smooth")
+
+        # Replace values in LAST_YEAR with original values
+        tb_smooth.loc[tb_smooth["year"] == LAST_YEAR, f"headcount_ratio_{povline}_smooth"] = tb_smooth.loc[
+            tb_smooth["year"] == LAST_YEAR, f"headcount_ratio_{povline}"
+        ].values
+
+    # For CBN
+    tb_smooth["headcount_ratio_cbn_smooth"] = tb_smooth.groupby("country")["headcount_ratio_cbn"].transform(
+        lambda x: x.rolling(10, 1).mean()
+    )
+    smooth_cols.append("headcount_ratio_cbn_smooth")
+
+    # Replace values in LAST_YEAR with original values
+    tb_smooth.loc[tb_smooth["year"] == LAST_YEAR, "headcount_ratio_cbn_smooth"] = tb_smooth.loc[
+        tb_smooth["year"] == LAST_YEAR, "headcount_ratio_cbn"
+    ].values
+
+    # Select decadal years, FIRST_YEAR and LAST_YEAR
+    tb_smooth = tb_smooth[
+        (tb_smooth["year"] % 10 == 0) | (tb_smooth["year"] == FIRST_YEAR) | (tb_smooth["year"] == LAST_YEAR)
+    ].reset_index(drop=True)
+
+    # Merge with tb
+
+    tb = tb.merge(tb_smooth[["country", "year"] + smooth_cols], on=["country", "year"], how="left")
+
+    return tb
+
+
+def create_above_and_between_vars(tb: Table, poverty_lines: list) -> Table:
     """
     Create additional variables from the share and number in poverty: above and between poverty lines (or CBN).
     Also, add metadata to these variables.
@@ -47,12 +109,6 @@ def create_above_and_between_vars(tb: Table) -> Table:
     # Create additional variables
     # Define columns to use
 
-    poverty_lines = [
-        "190",
-        "500",
-        "1000",
-        "3000",
-    ]
     cols_number = ["headcount_cbn"]
     cols_above = []
     cols_number_above = []

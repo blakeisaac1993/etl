@@ -5,7 +5,7 @@ If new poverty lines or indicators are included, they need to be addressed here
 
 from owid.catalog import Table, VariableMeta
 
-# These is text common to all variables
+# This is text to include in description_key and description_processing fields
 
 cbd_description_1 = """
 The ‘cost of basic needs’ approach was recommended by the World Bank Commission on Global Poverty, headed by Tony Atkinson, as a complementary method in measuring poverty.
@@ -51,6 +51,7 @@ povline_dict = {
     3000: {"title": "$30 a day", "title_between": "$30", "description": "living below $30 a day"},
 }
 
+# Details for the cost of basic needs method
 cbn_dict = {
     "cbn": {
         "title": "Cost of Basic Needs",
@@ -61,103 +62,146 @@ cbn_dict = {
 # Create a list from povline_dict
 povline_list = list(povline_dict.keys())
 
+# Details for each smoothed variable
+smooth_dict = {"": "Estimated", "_smooth": "Smoothed"}
+
 
 # This function creates the metadata for each variable in the dataset, from the dictionaries defined above
 def add_metadata_vars(tb_garden: Table):
+    """
+    Add metadata for each variable in the dataset, using the dictionaries above and the functions below
+    """
     # Get a list of all the variables available
     cols = list(tb_garden.columns)
 
     for var in var_dict:
-        for povline in povline_dict:
-            # For variables that "dollar a day" poverty lines
-            col_name = f"{var}_{povline}"
-
-            if col_name in cols:
-                # Create metadata for these variables
-                tb_garden[col_name].metadata = var_metadata_absolute(var, povline)
-
-                tb_garden[col_name].metadata.description_short = tb_garden[col_name].metadata.description_short.replace(
-                    "{povline}", str(povline_dict[povline]["description"])
-                )
-
-            # For variables above poverty lines
-            col_name = f"{var}_above_{povline}"
-
-            if col_name in cols:
-                # Create metadata for these variables
-                tb_garden[col_name].metadata = var_metadata_absolute(var, povline)
-
-                tb_garden[col_name].metadata.description_short = tb_garden[col_name].metadata.description_short.replace(
-                    "{povline}", str(povline_dict[povline]["description"])
-                )
-
-                tb_garden[col_name].metadata.description_short = tb_garden[col_name].metadata.description_short.replace(
-                    "below", "above"
-                )
-                tb_garden[col_name].metadata.title = tb_garden[col_name].metadata.title.replace(
-                    "in poverty", "not in poverty"
-                )
-                tb_garden[col_name].metadata.display["name"] = tb_garden[col_name].metadata.title
-
-        for cbn in cbn_dict:
-            # For variables that use the CBN method
-            col_name = f"{var}_{cbn}"
-
-            if col_name in cols:
-                # Create metadata for these variables
-                tb_garden[col_name].metadata = var_metadata_cbn(var, cbn)
-
-                tb_garden[col_name].metadata.description_short = tb_garden[col_name].metadata.description_short.replace(
-                    "{povline}", cbn_dict[cbn]["description"]
-                )
-
-            # For variables above CBN
-            col_name = f"{var}_above_{cbn}"
-
-            if col_name in cols:
-                # Create metadata for these variables
-                tb_garden[col_name].metadata = var_metadata_cbn(var, cbn)
-
-                tb_garden[col_name].metadata.description_short = tb_garden[col_name].metadata.description_short.replace(
-                    "{povline}", cbn_dict[cbn]["description"]
-                )
-
-                tb_garden[col_name].metadata.description_short = tb_garden[col_name].metadata.description_short.replace(
-                    "below", "above"
-                )
-                tb_garden[col_name].metadata.title = tb_garden[col_name].metadata.title.replace(
-                    "in poverty", "not in poverty"
-                )
-                tb_garden[col_name].metadata.display["name"] = tb_garden[col_name].metadata.title
-
-        for i in range(len(povline_list)):
-            if i != 0:
-                # For variables between poverty lines
-                col_name = f"{var}_between_{povline_list[i-1]}_{povline_list[i]}"
+        for smooth in smooth_dict:
+            for povline in povline_dict:
+                # For variables that have "dollar a day" poverty lines
+                col_name = f"{var}_{povline}{smooth}"
 
                 if col_name in cols:
-                    # Create metadata for these variables
-                    tb_garden[col_name].metadata = var_metadata_between(var, povline_list[i - 1], povline_list[i])
+                    # Get the origins of the variable
+                    origins = tb_garden[col_name].metadata.origins
 
+                    # Create metadata for these variables
+                    tb_garden[col_name].metadata = var_metadata_absolute(var, povline, origins, smooth)
+
+                    # Replace the {povline} placeholder in the description
                     tb_garden[col_name].metadata.description_short = tb_garden[
                         col_name
-                    ].metadata.description_short.replace(
-                        "{povline}",
-                        f"living between {povline_dict[povline_list[i-1]]['title_between']} and {povline_dict[povline_list[i]]['title_between']} a day",
+                    ].metadata.description_short.replace("{povline}", str(povline_dict[povline]["description"]))
+
+                # For variables above poverty lines
+                col_name = f"{var}_above_{povline}{smooth}"
+
+                if col_name in cols:
+                    # Get the origins of the variable
+                    origins = tb_garden[col_name].metadata.origins
+
+                    # Create metadata for these variables
+                    tb_garden[col_name].metadata = var_metadata_absolute(var, povline, origins, smooth)
+
+                    # Replace the {povline} placeholder in the description
+                    tb_garden[col_name].metadata.description_short = tb_garden[
+                        col_name
+                    ].metadata.description_short.replace("{povline}", str(povline_dict[povline]["description"]))
+
+                    # Replace "below" with "above" in the description
+                    tb_garden[col_name].metadata.description_short = tb_garden[
+                        col_name
+                    ].metadata.description_short.replace("below", "above")
+
+                    # Replace "in poverty" with "not in poverty" in the title
+                    tb_garden[col_name].metadata.title = tb_garden[col_name].metadata.title.replace(
+                        "in poverty", "not in poverty"
                     )
+
+                    # Replicate the title in the display name
+                    tb_garden[col_name].metadata.display["name"] = tb_garden[col_name].metadata.title
+
+            for i in range(len(povline_list)):
+                if i != 0:
+                    # For variables between poverty lines
+                    col_name = f"{var}_between_{povline_list[i-1]}_{povline_list[i]}{smooth}"
+
+                    if col_name in cols:
+                        # Get the origins of the variable
+                        origins = tb_garden[col_name].metadata.origins
+
+                        # Create metadata for these variables
+                        tb_garden[col_name].metadata = var_metadata_between(
+                            var, povline_list[i - 1], povline_list[i], origins, smooth
+                        )
+
+                        # Replace the {povline} placeholder in the description with the range of poverty lines
+                        tb_garden[col_name].metadata.description_short = tb_garden[
+                            col_name
+                        ].metadata.description_short.replace(
+                            "{povline}",
+                            f"living between {povline_dict[povline_list[i-1]]['title_between']} and {povline_dict[povline_list[i]]['title_between']} a day",
+                        )
+
+            for cbn in cbn_dict:
+                # For variables that use the CBN method
+                col_name = f"{var}_{cbn}{smooth}"
+
+                if col_name in cols:
+                    # Get the origins of the variable
+                    origins = tb_garden[col_name].metadata.origins
+
+                    # Create metadata for these variables
+                    tb_garden[col_name].metadata = var_metadata_cbn(var, cbn, origins, smooth)
+
+                    # Replace the {povline} placeholder in the description
+                    tb_garden[col_name].metadata.description_short = tb_garden[
+                        col_name
+                    ].metadata.description_short.replace("{povline}", cbn_dict[cbn]["description"])
+
+                # For variables above CBN
+                col_name = f"{var}_above_{cbn}{smooth}"
+
+                if col_name in cols:
+                    # Get the origins of the variable
+                    origins = tb_garden[col_name].metadata.origins
+
+                    # Create metadata for these variables
+                    tb_garden[col_name].metadata = var_metadata_cbn(var, cbn, origins, smooth)
+
+                    # Replace the {povline} placeholder in the description
+                    tb_garden[col_name].metadata.description_short = tb_garden[
+                        col_name
+                    ].metadata.description_short.replace("{povline}", cbn_dict[cbn]["description"])
+
+                    # Replace "below" with "above" in the description
+                    tb_garden[col_name].metadata.description_short = tb_garden[
+                        col_name
+                    ].metadata.description_short.replace("below", "above")
+
+                    # Replace "in poverty" with "not in poverty" in the title
+                    tb_garden[col_name].metadata.title = tb_garden[col_name].metadata.title.replace(
+                        "in poverty", "not in poverty"
+                    )
+
+                    # Replicate the title in the display name
+                    tb_garden[col_name].metadata.display["name"] = tb_garden[col_name].metadata.title
 
     return tb_garden
 
 
 # Metadata functions to show a clearer main code
-def var_metadata_absolute(var, povline) -> VariableMeta:
+def var_metadata_absolute(var, povline, origins, smooth) -> VariableMeta:
+    """
+    Create metadata for variables with absolute poverty lines
+    """
     meta = VariableMeta(
-        title=f"{povline_dict[povline]['title']} - {var_dict[var]['title']}",
+        title=f"{povline_dict[povline]['title']} - {var_dict[var]['title']} ({smooth_dict[smooth]})",
         description_short=var_dict[var]["description"],
         description_key=[ppp_description, dod_description],
         description_processing=processing_description,
         unit=var_dict[var]["unit"],
         short_unit=var_dict[var]["short_unit"],
+        origins=origins,
     )
     meta.display = {
         "name": meta.title,
@@ -168,14 +212,18 @@ def var_metadata_absolute(var, povline) -> VariableMeta:
     return meta
 
 
-def var_metadata_between(var, povline1, povline2) -> VariableMeta:
+def var_metadata_between(var, povline1, povline2, origins, smooth) -> VariableMeta:
+    """
+    Create metadata for variables between poverty lines
+    """
     meta = VariableMeta(
-        title=f"{povline_dict[povline1]['title_between']}-{povline_dict[povline2]['title_between']} - {var_dict[var]['title']}",
+        title=f"{povline_dict[povline1]['title_between']}-{povline_dict[povline2]['title_between']} - {var_dict[var]['title']} ({smooth_dict[smooth]})",
         description_short=var_dict[var]["description"],
         description_key=[ppp_description, dod_description],
         description_processing=processing_description,
         unit=var_dict[var]["unit"],
         short_unit=var_dict[var]["short_unit"],
+        origins=origins,
     )
     meta.display = {
         "name": meta.title,
@@ -186,14 +234,18 @@ def var_metadata_between(var, povline1, povline2) -> VariableMeta:
     return meta
 
 
-def var_metadata_cbn(var, cbn) -> VariableMeta:
+def var_metadata_cbn(var, cbn, origins, smooth) -> VariableMeta:
+    """
+    Create metadata for variables using the cost of basic needs method
+    """
     meta = VariableMeta(
-        title=f"{cbn_dict[cbn]['title']} - {var_dict[var]['title']}",
+        title=f"{cbn_dict[cbn]['title']} - {var_dict[var]['title']} ({smooth_dict[smooth]})",
         description_short=var_dict[var]["description"],
         description_key=[cbd_description_1, cbd_description_2],
         description_processing=processing_description,
         unit=var_dict[var]["unit"],
         short_unit=var_dict[var]["short_unit"],
+        origins=origins,
     )
     meta.display = {
         "name": meta.title,
