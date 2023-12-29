@@ -1,5 +1,7 @@
 """Load a meadow dataset and create a garden dataset."""
 
+from shared import add_metadata_vars
+
 from etl.data_helpers import geo
 from etl.helpers import PathFinder, create_dataset
 
@@ -50,6 +52,12 @@ def run(dest_dir: str) -> None:
         tb[f"headcount_above_{povline}"] = tb[f"headcount_ratio_above_{povline}"] * tb["pop"] / 100
         cols_number_above.append(f"headcount_above_{povline}")
 
+    # Also do it for cbn
+    tb["headcount_ratio_above_cbn"] = 100 - tb["headcount_ratio_cbn"]
+    cols_above.append("headcount_ratio_above_cbn")
+    tb["headcount_above_cbn"] = tb["headcount_ratio_above_cbn"] * tb["pop"] / 100
+    cols_number_above.append("headcount_above_cbn")
+
     # Share of people in between poverty lines (World Bank)
     # For each poverty line in cols_wb
     for i in range(len(poverty_lines)):
@@ -75,7 +83,8 @@ def run(dest_dir: str) -> None:
     )
     tb = tb.set_index(["country", "year"], verify_integrity=True)
 
-    tb.to_csv("moatsos_historical_poverty.csv")
+    # Add metadata by code
+    tb = add_metadata_vars(tb)
 
     #
     # Save outputs.
