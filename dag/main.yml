@@ -717,6 +717,14 @@ steps:
   data://grapher/survey/2023-08-04/trust_surveys:
   - data://garden/survey/2023-08-04/trust_surveys
 
+  # World Bank GenderStats
+  data://meadow/wb/2023-12-29/gender_statistics:
+    - snapshot://wb/2023-12-29/gender_statistics.csv
+  data://garden/wb/2023-12-29/gender_statistics:
+    - data://meadow/wb/2023-12-29/education
+  data://grapher/wb/2023-12-29/gender_statistics:
+    - data://garden/wb/2023-12-29/gender_statistics
+
   ######################################################################################################################
   # Older versions to be archived once they are not used by any other steps.
 
